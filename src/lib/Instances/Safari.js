@@ -586,35 +586,41 @@ class AutomationSafari
      */
 static __internal__battlePokemon()
 {
-    // 1. Si el juego está ocupado, no hacer nada
-    if (SafariBattle.busy()) return;
+    // 1. Si el juego está ocupado, esperamos (esto evita crasheos)
+    if (SafariBattle.busy()) {
+        // TRUCO: Si la animación lleva más de 100ms, forzamos el fin
+        // Esto acelera drásticamente el flujo
+        SafariBattle.busy(false); 
+        return;
+    }
 
     const enemy = SafariBattle.enemy;
-    const pokemonName = enemy.name;
-    const partyPokemon = App.game.party.getPokemonByName(pokemonName);
+    const partyPokemon = App.game.party.getPokemonByName(enemy.name);
     const currentEVs = partyPokemon ? partyPokemon.evs() : 0;
 
-    // 2. Lógica de huida (Ya confirmaste que funciona)
+    // Filtro de EVs
     if (currentEVs >= 50) {
         SafariBattle.run();
         return;
     }
 
-    // 3. Lógica de Nanab Berry
-    // IMPORTANTE: nanabEaten y catchFactor son observables, necesitan ()
     const nanabEaten = (typeof enemy.nanabEaten === 'function') ? enemy.nanabEaten() : enemy.nanabEaten;
     const catchFactor = (typeof enemy.catchFactor === 'function') ? enemy.catchFactor() : enemy.catchFactor;
 
-    if (nanabEaten == 0 && catchFactor < 90) {
-        // Verificamos si tienes la baya en el inventario (ID 18)
-        if (App.game.farming.berryList[18]() > 0) {
-            SafariBattle.useItem(18);
-        } else {
-            SafariBattle.throwBall();
-        }
-    } 
-    else {
+    // Lógica de lanzamiento
+    if (nanabEaten == 0 && App.game.farming.berryList[18]() > 0 && catchFactor < 90) {
+        SafariBattle.useItem(18);
+    } else {
         SafariBattle.throwBall();
+        
+        // --- SALTO DE ANIMACIÓN ---
+        // Forzamos al observable 'busy' a false inmediatamente después de tirar
+        // Esto permite que el siguiente paso del bot ocurra casi al instante
+        setTimeout(() => {
+            if (SafariBattle.enemy) {
+                SafariBattle.busy(false);
+            }
+        }, 50); 
     }
 }
 
