@@ -585,31 +585,38 @@ class AutomationSafari
      * @brief Handles the current pokémon encounter
      */
 static __internal__battlePokemon()
-    {
-        if (SafariBattle.busy()) return;
+{
+    // 1. Si el juego está ocupado, no hacer nada
+    if (SafariBattle.busy()) return;
 
-        const enemy = SafariBattle.enemy;
-        const partyPokemon = App.game.party.getPokemonByName(enemy.name);
-        const currentEVs = partyPokemon ? partyPokemon.evs() : 0;
+    const enemy = SafariBattle.enemy;
+    const pokemonName = enemy.name;
+    const partyPokemon = App.game.party.getPokemonByName(pokemonName);
+    const currentEVs = partyPokemon ? partyPokemon.evs() : 0;
 
-        // NUEVA LÓGICA: Si tiene 50+ EVs, HUIR
-        if (currentEVs >= 50) {
-            SafariBattle.run();
-            return;
-        }
+    // 2. Lógica de huida (Ya confirmaste que funciona)
+    if (currentEVs >= 50) {
+        SafariBattle.run();
+        return;
+    }
 
-        // NUEVA LÓGICA: Si < 50 EVs, usar Nanab (18) si no ha comido y ratio < 90
-        if (enemy.nanabEaten == 0 && enemy.catchFactor < 90) {
-            if (App.game.farming.berryList[18]() > 0) {
-                SafariBattle.useItem(18);
-            } else {
-                SafariBattle.throwBall();
-            }
-        } 
-        else {
+    // 3. Lógica de Nanab Berry
+    // IMPORTANTE: nanabEaten y catchFactor son observables, necesitan ()
+    const nanabEaten = (typeof enemy.nanabEaten === 'function') ? enemy.nanabEaten() : enemy.nanabEaten;
+    const catchFactor = (typeof enemy.catchFactor === 'function') ? enemy.catchFactor() : enemy.catchFactor;
+
+    if (nanabEaten == 0 && catchFactor < 90) {
+        // Verificamos si tienes la baya en el inventario (ID 18)
+        if (App.game.farming.berryList[18]() > 0) {
+            SafariBattle.useItem(18);
+        } else {
             SafariBattle.throwBall();
         }
+    } 
+    else {
+        SafariBattle.throwBall();
     }
+}
 
     /**
      * @brief Moves to the nearest item to collect
