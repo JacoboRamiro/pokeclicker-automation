@@ -584,26 +584,29 @@ class AutomationSafari
     /**
      * @brief Handles the current pokémon encounter
      */
-    static __internal__battlePokemon()
+static __internal__battlePokemon()
     {
-        // Do not attempt anything while the game is busy
         if (SafariBattle.busy()) return;
 
-        // If the user asked to complete the bait achievements, throw baits until it's done
-        if ((Automation.Utils.LocalStorage.getValue(this.Settings.FocusOnBaitAchievements) === "true")
-            && (this.__internal__baitAchievements.filter(a => !a.isCompleted()).length != 0))
-        {
-            SafariBattle.throwBait();
+        const enemy = SafariBattle.enemy;
+        const partyPokemon = App.game.party.getPokemonByName(enemy.name);
+        const currentEVs = partyPokemon ? partyPokemon.evs() : 0;
+
+        // NUEVA LÓGICA: Si tiene 50+ EVs, HUIR
+        if (currentEVs >= 50) {
+            SafariBattle.run();
+            return;
         }
-        // Thow a rock at the pokémon to improve the catch rate, unless its angry or its catch factor is high enough
-        else if ((SafariBattle.enemy.angry == 0)
-                 && (SafariBattle.enemy.catchFactor < 90))
-        {
-            SafariBattle.throwRock();
-        }
-        // Try to catch the pokémon
-        else
-        {
+
+        // NUEVA LÓGICA: Si < 50 EVs, usar Nanab (18) si no ha comido y ratio < 90
+        if (enemy.nanabEaten == 0 && enemy.catchFactor < 90) {
+            if (App.game.farming.berryList[18]() > 0) {
+                SafariBattle.useItem(18);
+            } else {
+                SafariBattle.throwBall();
+            }
+        } 
+        else {
             SafariBattle.throwBall();
         }
     }
